@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <title>Scatterplot</title>
+</head>
+<!-- Example based on http://bl.ocks.org/mbostock/3887118 -->
+<!-- Tooltip example from http://www.d3noob.org/2013/01/adding-tooltips-to-d3js-graph.html -->
+<!-- Coding style based on http://gist.github.com/mbostock/5977197 -->
+
+<style>
+    body {
+      font: sans-serif;
+    }
+    .center {
+     display: flex;
+     flex-direction: column;
+     width: 50%;
+     margin: 0;
+     justify-content: end;
+    }
+
+    .heading {
+      align-self: center;
+      }
+
+
+    .heading > h4 {
+      margin: 0 0 5px 0;
+    }
+
+    .heading > h5 {
+      margin: 0;
+    }
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+    
+    .dot {
+      stroke: #000;
+    }
+    
+    .tooltip {
+      position: absolute;
+      width: 200px;
+      height: 28px;
+      pointer-events: none;
+      font-size: 15px;
+      font-weight: bolder;
+      text-transform: uppercase;
+    }
+    </style>
+    <body>
+    <div class="center">
+      <div class="heading">
+        <h4>Click on the symbols on the right-hand side to filter data</h4>
+        <h5>Hover over a symbol for more information</h5>
+      </div>
+    </div>
+      
+    <div class="scatterplot"></div>
+  
+<script>
+    var margin = {top: 50, right:20, bottom: 30, left: 60},
+    width = 1500 - margin.left - margin.right,
+    height = 600 - margin.top - margin.bottom
+    parseDate = d3.timeParse('%d %b %Y'),
+    symbols = d3.scaleOrdinal(d3.symbols),
+    formatDate = d3.timeFormat('%b %Y');
+
+  // set up x
+  var x = d3.scaleTime().range([0, width]) // value -> display
+  var xAxis = d3.axisBottom(x); 
+   
+
+  // setup y
+
+  var y = d3.scaleLinear().range([height, 0]) // value -> display
+  var yAxis = d3.axisLeft(y);
+ 
+
+  var r = d3.scaleSqrt().range([2,10]);
+
+// setup fill color
+var cValue = function(d) { return d.revenue_category;},
+color = d3.scaleOrdinal(d3.schemeCategory20b)
+   
+var symbol = d3.symbol().size(100)
+
+// add the graph canvas to the body of the webpage
+
+var svg = d3.select(".scatterplot").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+// add the tooltip area to the webpage
+var tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+// load data
+    d3.csv("payment-data-set.csv", function(data) {
+      data.forEach(function (d) {
+        d.payment_date = parseDate(d.payment_date)
+        d.amount_due = +d.amount_due
+        d.amount_paid = +d.amount_paid
+      });
+
+x.domain(d3.extent(data, function(d) { return d.payment_date; })).nice();
+y.domain([0, d3.max(data, function(d) {return +d.amount_paid; })]).nice();
+r.domain(d3.extent(data, function(d){
+		return d.amount_due;
+	})).nice();
+
+// x-axis
+svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+    .call(xAxis);
+
+// y-axis
+svg.append("g")
+      .attr("class", "y axis")
+      .attr('transform', 'translate(0,0)')
+    .call(yAxis);
+
+  svg.append("text")
+    .attr("class", "label")
+    .attr("x", 50)
+    .attr("y", 10)
+    .attr('font-size', "11px")
+    .style("text-anchor", "end")
+    .text("Amount");
+
+  svg.append("text")
+    .attr("class", "label")
+    .attr("x", width)
+    .attr("y", height -10)
+    .attr('font-size', "11px")
+    .style("text-anchor", "end")
+    .text("Month Year");
+
+// draw dots
+
+// draw symbol
+svg.selectAll(".symbol")
+    .data(data)
+  .enter().append("path")
+    .attr("class", "symbol")
+    .attr("d", function(d, i) { return symbol.type(symbols(d.revenue_category))(); })
+    .style("fill", function(d) { return color(d.revenue_category); })
+    .attr("transform", function(d) { 
+      return "translate(" + x(d.payment_date) + "," + y(d.amount_paid) +")"; 
+    })
+    .on("mouseover", function(d) {
+        tooltip.transition()
+             .duration(200)
+             .style("opacity", .9);
+        tooltip.html(d.revenue_category + "<br/> (" + formatDate(d.payment_date) 
+          + ", " + d.amount_paid + ")")
+             .style("left", (d3.event.pageX + 5) + "px")
+             .style("top", (d3.event.pageY - 28) + "px")
+             
+    })
+    .on("mouseout", function(d) {
+        tooltip.transition()
+             .duration(500)
+             .style("opacity", 0);
+    });
+  
+  var clicked = ""
+  
+
+  // draw legend
+  var legend = svg.selectAll(".legend")
+    .data(color.domain())
+  .enter().append("g")
+    .attr("class", "legend")
+    .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+  legend.append("path")
+    .style("fill", function(d) { return color(d); })
+    	.attr("d", function(d, i) { return symbol.type(symbols(d))(); })
+	    .attr("transform", function(d, i) { 
+    		return "translate(" + (width -10) + "," + 10 + ")";
+  		})
+      
+  		.on("click",function(d){
+   d3.selectAll(".symbol").style("opacity",1)
+   
+   if (clicked !== d){
+     d3.selectAll(".symbol")
+       .filter(function(e){
+       return e.revenue_category !== d;
+     })
+       .style("opacity",0.1)
+     clicked = d
+   }
+    else{
+      clicked = ""
+    }
+  })
+  
+ 
+  legend.append("text")
+      .attr("x", width - 24)
+      .attr("y", 9)
+      .attr("dy", ".35em")
+      .attr('font-size', "11px")
+      .style("text-anchor", "end")
+      .text(function(d) { return d; });
+
+});
+          </script>
+</body>
+</html>
