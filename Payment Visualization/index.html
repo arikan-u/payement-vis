@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <title>index</title>
+</head>
+<body>
+    <div class="control-group">
+        <button onclick="select('RSTV')">
+            RSTV
+        </button>
+        <button onclick="select('Mobile Advert Permit')">
+            Mobile Advert Permit
+        </button>
+        <button onclick="select('Mobile Environmental Sanitation')">
+            Mobile Environmental Sanitation
+        </button>
+        <button onclick="select('Trade License (Operational Permit)')">
+            Trade License (Operational Permit)
+        </button>
+        <button onclick="select('Sanitation Levy')">
+            Sanitation Levy
+        </button>
+        <button onclick="select('Advert Display Permit')">
+            Advert Display Permit
+        </button>
+        <button onclick="select('Indigene Certificate Fee')">
+            Indigene Certificate Fee
+        </button>
+        <button onclick="select('Liquor License')">
+            Liquor License
+        </button>
+        <button onclick="select('Road Transport Daily Operation Fee')">
+            Road Transport Daily Operation Fee
+        </button>
+        <button onclick="select('Passenger Loading Fees')">
+            Passenger Loading Fees
+        </button>
+        <button onclick="select('Fees for Ground Rent for Council Shops')">
+            Fees for Ground Rent for Council Shops
+        </button>
+        <button onclick="select('Tenement Rate')">
+            Tenement Rate
+        </button>
+        <button onclick="select()">
+            Clear
+        </button>
+    </div>
+
+    <div id="chart"></div>
+
+    <style>
+        .legend {
+            font-size: 12px;
+        }
+
+        rect {
+            stroke-width: 2;
+        }
+        
+        .control-group {
+            padding-top: 10px;
+            margin: 10px;
+        }
+    </style>
+
+    <script>
+        var width = 1080;
+        var height = 1080;
+        var legendRectSize = 18;
+        var legendSpacing = 4;
+        var parseDate = d3.timeParse('%d/%m/%Y %H:%M');
+        var formatDate = d3.timeFormat('%B %Y');
+
+        var arc = d3.arc()
+                    .innerRadius(radius - donutWidth)
+                    .outerRadius(radius);
+
+        var pie = d3.pie()
+                    .value(function(d) {return d.amount_paid; })
+                    .sort(null);
+        
+        var radius = Math.min(width, height)/2;
+        var donutWidth = 225 ;
+        var color = d3.scaleOrdinal(d3.schemeCategory20b);
+
+        const svg = d3.select('#chart')
+                            .append('svg')
+                                .attr('width', width)
+                                .attr('height', height)
+                            .append('g')
+                                .attr('transform', 'translate('+ (width / 2) + ',' + (height / 2) +')')
+        
+       
+       
+        data = d3.csv('payment-data-set.csv', function(data) {
+            data.forEach(d => {
+                d.amount_paid = +d.amount_paid;
+                d.amount_due = +d.amount_due;
+                d.payment_date = formatDate(parseDate(d.payment_date));
+            });
+            
+
+            //function update(month, year) {
+                //var filtered = nested.filter(function d(d) {
+                    //return new Date(d['key'])
+               // });
+            //}
+
+            const path = svg.selectAll('path')
+                            .data(pie(data))
+                            .enter()
+                            .append('path')
+                                .attr('d', arc)
+                                .attr('fill', function (d, i){
+                                return color(d.data.revenue_category);
+                            });
+
+            const legend = svg.selectAll('.legend')
+                            .data(color.domain())
+                            .enter()
+                            .append('g')
+                                .attr('class', 'legend')
+                                .attr('transform', function(d, i) {
+                                    var height =legendRectSize + legendSpacing;
+                                    var offset = height * color.domain().length/2;
+                                    var horz = -2 * legendRectSize;
+                                    var vert =i *height - offset;
+                                    
+                                    return 'translate(' + horz +','+ vert + ')';
+                                });
+
+                                legend.append('rect')
+                                        .attr('width', legendRectSize)
+                                        .attr('height', legendRectSize)
+                                        .style('fill', color)
+                                        .style('stroke', color);
+
+                                legend.append('text')
+                                        .attr('x', legendRectSize + legendSpacing)
+                                        .attr('y', legendRectSize - legendSpacing)
+                                        .text(function(d) { return d.toUpperCase(); });
+         });
+    </script>
+</body>
+</html>
